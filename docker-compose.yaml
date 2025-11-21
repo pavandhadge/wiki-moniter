@@ -1,7 +1,8 @@
-version: "3.7"
+version: "3.9" # 3.7 is fine, but 3.9+ is safer with newer Docker
+
 services:
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
+    image: confluentinc/cp-zookeeper:7.6.1 # upgrade to latest stable
     container_name: zookeeper
     ports:
       - "2181:2181"
@@ -15,25 +16,41 @@ services:
     depends_on:
       - zookeeper
     ports:
-      - "9092:9092"
+      - "9092:9092" # for your Go app
+      - "29092:29092" # internal (optional expose)
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: "zookeeper:2181"
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:29092
-      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
-  schema-registry:
-    image: confluentinc/cp-schema-registry:7.6.1
-    container_name: schema-registry
+      # Critical fixes below:
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_HOST://0.0.0.0:9092
+
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+
+      # These are mandatory for single-broker setup
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+      # Recommended
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+
+  kafka-setup:
+    image: confluentinc/cp-kafka:7.6.1
+    hostname: kafka-setup
     depends_on:
       - kafka
-    ports:
-      - "8081:8081"
-    environment:
-      SCHEMA_REGISTRY_HOST_NAME: schema-registry
-      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: kafka:29092
-      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+    command: >
+      bash -c "
+        echo 'Waiting for Kafka to be ready...' &&
+        cub kafka-ready -b kafka:29092 1 30 &&
+        kafka-topics --create
+          --topic wikimedia.recentchange
+          --bootstrap-server kafka:29092
+          --partitions 6
+          --replication-factor 1
+          --config retention.ms=604800000 || echo 'Topic already exists'
+      "

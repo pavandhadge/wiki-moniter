@@ -4,8 +4,9 @@ go 1.24.0
 
 toolchain go1.24.10
 
+require github.com/IBM/sarama v1.46.3
+
 require (
-	github.com/IBM/sarama v1.46.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/eapache/go-resiliency v1.7.0 // indirect
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
@@ -20,8 +21,6 @@ require (
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
-	github.com/samuel/go-zookeeper v0.0.0-20201211165307-7117e9ea2414 // indirect
-	github.com/wvanbergen/kazoo-go v0.0.0-20180202103751-f72d8611297a // indirect
 	golang.org/x/crypto v0.43.0 // indirect
 	golang.org/x/net v0.46.0 // indirect
 )

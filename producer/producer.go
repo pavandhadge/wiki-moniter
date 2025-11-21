@@ -24,6 +24,7 @@ func main() {
 	brokerList := strings.Split(brokers, ",")
 
 	config := sarama.NewConfig()
+	config.Producer.Partitioner = sarama.NewHashPartitioner
 	config.Producer.Return.Successes = true // required to get Successes()
 	config.Producer.Return.Errors = true
 
