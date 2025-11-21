@@ -7,23 +7,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
+	shared "wikimedia-kafka-go/shared"
 
 	"github.com/IBM/sarama"
 )
-
-type WikimediaEvent struct {
-	Meta struct {
-		Topic string `json:"topic"`
-	} `json:"meta"`
-	Wiki  string `json:"wiki"`
-	User  string `json:"user"`
-	Bot   bool   `json:"bot"`
-	Type  string `json:"type"`
-	Title string `json:"title"`
-}
 
 const wikiURL = "https://stream.wikimedia.org/v2/stream/recentchange"
 
@@ -82,7 +71,7 @@ func main() {
 
 		data := event[6:] // actual JSON payload
 
-		var wikievent WikimediaEvent
+		var wikievent shared.WikimediaEvent
 		if err := json.Unmarshal(data, &wikievent); err != nil {
 			log.Printf("JSON unmarshal error: %v | raw: %s", err, string(data))
 			continue
@@ -96,13 +85,13 @@ func main() {
 			Key:   sarama.StringEncoder(wikievent.Wiki + "|" + wikievent.Title),
 			Value: sarama.ByteEncoder(data), // preserve original JSON exactly
 
-			Headers: []sarama.RecordHeader{
-				{Key: []byte("wiki"), Value: []byte(wikievent.Wiki)},
-				{Key: []byte("event_type"), Value: []byte(wikievent.Type)},
-				{Key: []byte("user"), Value: []byte(wikievent.User)},
-				{Key: []byte("title"), Value: []byte(wikievent.Title)},
-				{Key: []byte("is_bot"), Value: []byte(strconv.FormatBool(wikievent.Bot))},
-			},
+			// Headers: []sarama.RecordHeader{
+			// 	{Key: []byte("wiki"), Value: []byte(wikievent.Wiki)},
+			// 	{Key: []byte("event_type"), Value: []byte(wikievent.Type)},
+			// 	{Key: []byte("user"), Value: []byte(wikievent.User)},
+			// 	{Key: []byte("title"), Value: []byte(wikievent.Title)},
+			// 	{Key: []byte("is_bot"), Value: []byte(strconv.FormatBool(wikievent.Bot))},
+			// },
 
 			Timestamp: time.Now(),
 		}
